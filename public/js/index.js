@@ -341,65 +341,23 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         // ------------------------------------------
-    // 8.1 UNDUH GAMBAR KE LAPTOP/HP
+    // 8.1 UNDUH GAMBAR KE LAPTOP/HP VIA SERVER PROXY
     // ------------------------------------------
 
     document.getElementById("downloadImage")
-        ?.addEventListener("click", async () => {
+        ?.addEventListener("click", () => {
             if (!selectedImageUrl) return;
 
             if (imageActionStatus) {
-                imageActionStatus.textContent = "Menyiapkan unduhan...";
-                imageActionStatus.className = "mt-3 text-center text-sm text-gray-500";
+                imageActionStatus.textContent = "✓ Unduhan dimulai...";
+                imageActionStatus.className = "mt-3 text-center text-sm font-semibold text-green-600";
             }
 
-            try {
-                const response = await fetch(selectedImageUrl);
+            // Panggil endpoint /api/download di server
+            const downloadUrl = `/api/download?url=${encodeURIComponent(selectedImageUrl)}&name=${encodeURIComponent(selectedImageTitle || "gambar-inspopic")}`;
 
-                if (!response.ok) {
-                    throw new Error("Gambar tidak dapat diunduh langsung.");
-                }
-
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-
-                const link = document.createElement("a");
-                const safeName = (selectedImageTitle || "gambar-inspopic")
-                    .replace(/[^\p{L}\p{N}_-]/gu, "_")
-                    .slice(0, 100);
-
-                const extension = blob.type.includes("png")
-                    ? "png"
-                    : blob.type.includes("webp")
-                        ? "webp"
-                        : blob.type.includes("gif")
-                            ? "gif"
-                            : "jpg";
-
-                link.href = objectUrl;
-                link.download = `${safeName}.${extension}`;
-
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-
-                URL.revokeObjectURL(objectUrl);
-
-                if (imageActionStatus) {
-                    imageActionStatus.textContent = "✓ Unduhan berhasil dimulai!";
-                    imageActionStatus.className = "mt-3 text-center text-sm font-semibold text-green-600";
-                }
-            } catch (error) {
-                console.error("Gagal mengunduh gambar:", error);
-
-                if (imageActionStatus) {
-                    imageActionStatus.textContent =
-                        "Gagal unduh langsung. Silakan gunakan tombol 'Lihat Gambar Asli' lalu Klik Kanan > Simpan Gambar.";
-                    imageActionStatus.className = "mt-3 text-center text-sm font-semibold text-red-600";
-                }
-            }
+            window.location.href = downloadUrl;
         });
-
     // ------------------------------------------
     // 9. UPLOAD GAMBAR KE BACKEND
     // ------------------------------------------

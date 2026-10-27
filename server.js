@@ -11,7 +11,7 @@ const {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
-  PutBucketPolicyCommand, // <-- SUDAH DITAMBAHKAN
+  PutBucketPolicyCommand,
 } = require("@aws-sdk/client-s3");
 
 const app = express();
@@ -181,7 +181,7 @@ app.post("/upload", upload.single("image"), async (req, res, next) => {
         Key: objectKey,
         Body: req.file.buffer,
         ContentType: req.file.mimetype,
-        ACL: "public-read", // <-- INI SUDAH ADA
+        ACL: "public-read",
       })
     );
 
@@ -308,6 +308,52 @@ app.post("/api/saved", async (req, res, next) => {
 });
 
 // ==================================================
+// 13.5 ENDPOINT PROXY DOWNLOAD GAMBAR (BARU)
+// ==================================================
+
+app.get("/api/download", async (req, res) => {
+  try {
+    const imageUrl = req.query.url;
+    const filename = req.query.name || "gambar-inspopic";
+
+    if (!imageUrl) {
+      return res.status(400).send("URL gambar diperlukan.");
+    }
+
+    const response = await fetch(imageUrl);
+
+    if (!response.ok) {
+      return res.status(404).send("Gambar tidak ditemukan.");
+    }
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const ext = contentType.includes("png")
+      ? "png"
+      : contentType.includes("webp")
+      ? "webp"
+      : contentType.includes("gif")
+      ? "gif"
+      : "jpg";
+
+    const safeFilename = filename.replace(/[^\w\s-]/gi, "_").trim();
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${safeFilename}.${ext}"`
+    );
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error("Gagal mendownload via proxy:", error);
+    res.status(500).send("Terjadi kesalahan saat mengunduh gambar.");
+  }
+});
+
+// ==================================================
 // 14. HAPUS GAMBAR DARI DAFTAR TERSIMPAN
 // ==================================================
 
@@ -349,7 +395,7 @@ app.get("/", (req, res) => {
 });
 
 // ==================================================
-// 15.5 FIX KEAMANAN BUCKET BIZNET (JALANKAN SEKALI SAJA)
+// 15.5 FIX KEAMANAN BUCKET BIZNET
 // ==================================================
 
 app.get("/buka-kunci", async (req, res) => {
@@ -362,18 +408,20 @@ app.get("/buka-kunci", async (req, res) => {
           Effect: "Allow",
           Principal: "*",
           Action: "s3:GetObject",
-          Resource: `arn:aws:s3:::${bucket}/*`
-        }
-      ]
+          Resource: `arn:aws:s3:::${bucket}/*`,
+        },
+      ],
     };
 
     const command = new PutBucketPolicyCommand({
       Bucket: bucket,
-      Policy: JSON.stringify(policy)
+      Policy: JSON.stringify(policy),
     });
 
     await s3.send(command);
-    res.send("<h1>SUKSES!</h1><p>Gudang Biznet sekarang sudah terbuka untuk publik. Silakan coba upload gambar lagi di InspoPic.</p>");
+    res.send(
+      "<h1>SUKSES!</h1><p>Gudang Biznet sekarang sudah terbuka untuk publik. Silakan coba upload gambar lagi di InspoPic.</p>"
+    );
   } catch (error) {
     console.error(error);
     res.status(500).send("GAGAL MEMBUKA KUNCI: " + error.message);
@@ -398,10 +446,7 @@ app.use((err, req, res, next) => {
     });
   }
 
-  if (
-    err.message &&
-    err.message.startsWith("Format yang diizinkan:")
-  ) {
+  if (err.message && err.message.startsWith("Format yang diizinkan:")) {
     return res.status(400).json({
       message: err.message,
     });
@@ -439,4 +484,83 @@ startServer().catch((error) => {
     error.message
   );
   process.exit(1);
+});
+
+// ==================================================
+// 11.5 HAPUS GAMBAR UTAMA (UNGGAHAN)
+// ==================================================
+
+app.delete("/api/images/:id", async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "ID gambar tidak valid." });
+    }
+
+    // Ambil object_key gambar dari database
+    const [rows] = await pool.execute(
+      `SELECT object_key FROM images WHERE id = ? LIMIT 1`,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Gambar tidak ditemukan." });
+    }
+
+    const objectKey = rows[0].object_key;
+
+    // Hapus data dari database MySQL
+    await pool.execute(`DELETE FROM images WHERE id = ?`, [id]);
+
+    // Hapus file dari Biznet Object Storage jika S3 aktif
+    if (s3 && objectKey) {
+      try {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: bucket,
+            Key: objectKey,
+          })
+        );
+      } catch (s3Error) {
+        console.error("Gagal menghapus file dari Biznet Storage:", s3Error.message);
+      }
+    }
+
+    return res.json({ message: "Unggahan berhasil dihapus." });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ==================================================
+// 11.6 EDIT JUDUL GAMBAR (UPDATE)
+// ==================================================
+
+app.put("/api/images/:id", async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const title = String(req.body?.title || "").trim();
+
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      return res.status(400).json({ message: "ID gambar tidak valid." });
+    }
+
+    if (!title || title.length > 150) {
+      return res.status(400).json({ message: "Judul wajib diisi dan maksimal 150 karakter." });
+    }
+
+    const [result] = await pool.execute(
+      `UPDATE images SET title = ? WHERE id = ?`,
+      [title, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Gambar tidak ditemukan." });
+    }
+
+    return res.json({ message: "Judul gambar berhasil diperbarui.", title });
+  } catch (error) {
+    next(error);
+  }
 });

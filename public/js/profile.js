@@ -1,7 +1,7 @@
 /**
  * ==========================================
  * INSPOPIC - PROFILE JAVASCRIPT
- * Profil, unggahan, gambar tersimpan, dan tab.
+ * Profil, unggahan, gambar tersimpan, tab, update & delete.
  * ==========================================
  */
 
@@ -39,6 +39,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const statSaved = document.getElementById("statSaved");
 
     const tabs = document.querySelectorAll(".profile-tab");
+
+    // Modal Edit Judul Gambar
+    const editTitleModal = document.getElementById("editTitleModal");
+    const editTitleForm = document.getElementById("editTitleForm");
+    const imageTitleInput = document.getElementById("imageTitleInput");
+    const editTitleStatus = document.getElementById("editTitleStatus");
+    let currentEditImageId = null;
 
     // ------------------------------------------
     // 2. MEMUAT HEADER DAN FOOTER
@@ -86,21 +93,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (parsed && typeof parsed === "object") {
                 profile = {
-                    name: typeof parsed.name === "string"
-                        ? parsed.name
-                        : defaultProfile.name,
-
-                    username: typeof parsed.username === "string"
-                        ? parsed.username
-                        : defaultProfile.username,
-
-                    bio: typeof parsed.bio === "string"
-                        ? parsed.bio
-                        : defaultProfile.bio,
-
-                    location: typeof parsed.location === "string"
-                        ? parsed.location
-                        : defaultProfile.location
+                    name: typeof parsed.name === "string" ? parsed.name : defaultProfile.name,
+                    username: typeof parsed.username === "string" ? parsed.username : defaultProfile.username,
+                    bio: typeof parsed.bio === "string" ? parsed.bio : defaultProfile.bio,
+                    location: typeof parsed.location === "string" ? parsed.location : defaultProfile.location
                 };
             }
         }
@@ -113,32 +109,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // ------------------------------------------
 
     function renderProfile() {
-        if (profileName) {
-            profileName.textContent = profile.name;
-        }
-
-        if (profileUsername) {
-            profileUsername.textContent = `@${profile.username}`;
-        }
-
-        if (profileBio) {
-            profileBio.textContent = profile.bio || "Belum ada bio.";
-        }
-
-        if (profileLocation) {
-            profileLocation.textContent =
-                profile.location || "Lokasi belum diatur";
-        }
+        if (profileName) profileName.textContent = profile.name;
+        if (profileUsername) profileUsername.textContent = `@${profile.username}`;
+        if (profileBio) profileBio.textContent = profile.bio || "Belum ada bio.";
+        if (profileLocation) profileLocation.textContent = profile.location || "Lokasi belum diatur";
 
         if (avatarInitial) {
-            avatarInitial.textContent =
-                profile.name.trim().charAt(0).toUpperCase() || "U";
+            avatarInitial.textContent = profile.name.trim().charAt(0).toUpperCase() || "U";
         }
 
-        const headerAvatar = document.querySelector(
-            "#header-container a[href='/profile.html'] span"
-        );
-
+        const headerAvatar = document.querySelector("#header-container a[href='/profile.html'] span");
         if (headerAvatar && avatarInitial) {
             headerAvatar.textContent = avatarInitial.textContent;
         }
@@ -158,9 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (editBio) editBio.value = profile.bio;
         if (editLocation) editLocation.value = profile.location;
 
-        if (bioCount && editBio) {
-            bioCount.textContent = editBio.value.length;
-        }
+        if (bioCount && editBio) bioCount.textContent = editBio.value.length;
 
         if (status) {
             status.textContent = "";
@@ -182,31 +160,12 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.classList.remove("modal-open");
     }
 
-    document.getElementById("openEditProfile")
-        ?.addEventListener("click", openModal);
-
-    document.getElementById("closeEditProfile")
-        ?.addEventListener("click", closeModal);
-
-    document.getElementById("cancelEditProfile")
-        ?.addEventListener("click", closeModal);
+    document.getElementById("openEditProfile")?.addEventListener("click", openModal);
+    document.getElementById("closeEditProfile")?.addEventListener("click", closeModal);
+    document.getElementById("cancelEditProfile")?.addEventListener("click", closeModal);
 
     modal?.addEventListener("click", event => {
         if (event.target === modal) closeModal();
-    });
-
-    document.addEventListener("keydown", event => {
-        if (
-            event.key === "Escape" &&
-            modal &&
-            !modal.classList.contains("hidden")
-        ) {
-            closeModal();
-        }
-    });
-
-    editBio?.addEventListener("input", () => {
-        if (bioCount) bioCount.textContent = editBio.value.length;
     });
 
     // ------------------------------------------
@@ -221,49 +180,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const bio = editBio?.value.trim() || "";
         const location = editLocation?.value.trim() || "";
 
-        function showEditStatus(text, type = "error") {
-            if (!status) return;
-
-            status.textContent = text;
-            status.className = type === "success"
-                ? "text-sm text-green-600"
-                : "text-sm text-red-600";
-        }
-
         if (!name || !username) {
-            showEditStatus("Nama dan username wajib diisi.");
+            alert("Nama dan username wajib diisi.");
             return;
         }
 
-        if (!/^[A-Za-z0-9_]+$/.test(username)) {
-            showEditStatus(
-                "Username hanya boleh berisi huruf, angka, dan garis bawah."
-            );
-            return;
-        }
-
-        const updatedProfile = {
-            name,
-            username,
-            bio,
-            location
-        };
+        const updatedProfile = { name, username, bio, location };
 
         try {
-            localStorage.setItem(
-                "inspopicProfile",
-                JSON.stringify(updatedProfile)
-            );
-
+            localStorage.setItem("inspopicProfile", JSON.stringify(updatedProfile));
             profile = updatedProfile;
             renderProfile();
-
-            showEditStatus("Profil berhasil diperbarui.", "success");
-
-            setTimeout(closeModal, 500);
+            closeModal();
         } catch (error) {
             console.error("Gagal menyimpan profil:", error);
-            showEditStatus("Profil tidak dapat disimpan di browser ini.");
         }
     });
 
@@ -278,34 +208,88 @@ document.addEventListener("DOMContentLoaded", () => {
         saved: []
     };
 
-    /**
-     * Menormalkan respons API menjadi array.
-     */
     function extractItems(data, possibleKeys) {
         if (Array.isArray(data)) return data;
-
         for (const key of possibleKeys) {
-            if (Array.isArray(data?.[key])) {
-                return data[key];
-            }
+            if (Array.isArray(data?.[key])) return data[key];
         }
-
         return [];
     }
 
-    /**
-     * Membuat kartu gambar dengan DOM API agar judul
-     * tidak dimasukkan sebagai HTML mentah.
-     */
+    // --- FUNGSI EDIT JUDUL (UPDATE) ---
+    function openEditTitleModal(id, currentTitle) {
+        currentEditImageId = id;
+        if (imageTitleInput) imageTitleInput.value = currentTitle;
+        if (editTitleStatus) editTitleStatus.textContent = "";
+
+        if (editTitleModal) {
+            editTitleModal.classList.remove("hidden");
+            editTitleModal.classList.add("flex");
+            document.body.classList.add("modal-open");
+        }
+    }
+
+    function closeEditTitleModal() {
+        if (editTitleModal) {
+            editTitleModal.classList.add("hidden");
+            editTitleModal.classList.remove("flex");
+            document.body.classList.remove("modal-open");
+        }
+    }
+
+    document.getElementById("closeEditTitleModal")?.addEventListener("click", closeEditTitleModal);
+    document.getElementById("cancelEditTitle")?.addEventListener("click", closeEditTitleModal);
+
+    editTitleForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const newTitle = imageTitleInput?.value.trim();
+
+        if (!newTitle || !currentEditImageId) return;
+
+        try {
+            if (editTitleStatus) editTitleStatus.textContent = "Menyimpan...";
+
+            await apiFetch(`/api/images/${currentEditImageId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newTitle }),
+            });
+
+            // Update di lokal
+            const item = profileImages.uploads.find(img => img.id === currentEditImageId);
+            if (item) item.title = newTitle;
+
+            renderGallery();
+            closeEditTitleModal();
+        } catch (err) {
+            if (editTitleStatus) editTitleStatus.textContent = err.message || "Gagal memperbarui judul.";
+        }
+    });
+
+    // --- FUNGSI HAPUS GAMBAR (DELETE) ---
+    async function deleteImage(id, tabName) {
+        if (!confirm("Apakah kamu yakin ingin menghapus gambar ini?")) return;
+
+        try {
+            const endpoint = tabName === "uploads" ? `/api/images/${id}` : `/api/saved/${id}`;
+            await apiFetch(endpoint, { method: "DELETE" });
+
+            profileImages[tabName] = profileImages[tabName].filter(item => item.id !== id);
+            renderGallery();
+        } catch (error) {
+            alert(error.message || "Gagal menghapus gambar.");
+        }
+    }
+
+    // --- MEMBUAT KARTU GAMBAR DENGAN TOMBOL EDIT & HAPUS ---
     function createProfileCard(item, tabName) {
         const imageUrl = item.image_url || item.url;
-
         if (!imageUrl) return null;
 
         const title = item.title || "Gambar InspoPic";
 
         const card = document.createElement("article");
-        card.className = "pin-card";
+        card.className = "pin-card relative group rounded-2xl overflow-hidden bg-white shadow-sm border border-gray-100 p-2 mb-4";
         card.dataset.tab = tabName;
 
         const image = document.createElement("img");
@@ -315,17 +299,51 @@ document.addEventListener("DOMContentLoaded", () => {
         image.className = "w-full rounded-xl object-cover";
 
         const heading = document.createElement("h3");
-        heading.className = "mt-2 font-semibold";
+        heading.className = "mt-2 px-1 font-semibold text-sm text-gray-800 truncate";
         heading.textContent = title;
 
-        card.append(image, heading);
+        // Container Tombol Aksi (Edit & Delete)
+        const actionContainer = document.createElement("div");
+        actionContainer.className = "absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition duration-200";
 
+        // Tombol Edit (Hanya untuk Unggahan)
+        if (tabName === "uploads") {
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "bg-white/90 text-gray-700 hover:text-red-600 rounded-full p-2 text-xs font-bold shadow-md transition hover:bg-white";
+            editBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                </svg>
+            `;
+            editBtn.title = "Edit Judul";
+            editBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                openEditTitleModal(item.id, title);
+            });
+            actionContainer.appendChild(editBtn);
+        }
+
+        // Tombol Hapus
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "bg-red-600 text-white rounded-full p-2 text-xs font-bold shadow-md transition hover:bg-red-700";
+        deleteBtn.innerHTML = `
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+        `;
+        deleteBtn.title = "Hapus Gambar";
+        deleteBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            deleteImage(item.id, tabName);
+        });
+
+        actionContainer.appendChild(deleteBtn);
+        card.append(image, heading, actionContainer);
         return card;
     }
 
-    /**
-     * Merender tab aktif dan memperbarui statistik.
-     */
     function renderGallery() {
         if (!gallery) return;
 
@@ -344,43 +362,28 @@ document.addEventListener("DOMContentLoaded", () => {
         emptyGallery?.classList.toggle("hidden", hasItems);
 
         if (galleryHeading) {
-            galleryHeading.textContent = activeTab === "uploads"
-                ? "Gambar yang kamu unggah"
-                : "Gambar tersimpan";
+            galleryHeading.textContent = activeTab === "uploads" ? "Gambar yang kamu unggah" : "Gambar tersimpan";
         }
 
         if (galleryDescription) {
-            galleryDescription.textContent = activeTab === "uploads"
-                ? "Inspirasi yang kamu bagikan kepada dunia."
-                : "Kumpulan gambar yang ingin kamu lihat kembali.";
+            galleryDescription.textContent = activeTab === "uploads" ? "Inspirasi yang kamu bagikan kepada dunia." : "Kumpulan gambar yang ingin kamu lihat kembali.";
         }
 
         if (emptyGalleryTitle) {
-            emptyGalleryTitle.textContent = activeTab === "uploads"
-                ? "Belum ada unggahan"
-                : "Belum ada gambar tersimpan";
+            emptyGalleryTitle.textContent = activeTab === "uploads" ? "Belum ada unggahan" : "Belum ada gambar tersimpan";
         }
 
         if (emptyGalleryText) {
-            emptyGalleryText.textContent = activeTab === "uploads"
-                ? "Unggah gambar pertamamu untuk mulai membangun galeri inspirasi."
-                : "Simpan gambar favoritmu untuk menemukannya kembali di sini.";
+            emptyGalleryText.textContent = activeTab === "uploads" ? "Unggah gambar pertamamu untuk mulai membangun galeri inspirasi." : "Simpan gambar favoritmu untuk menemukannya kembali di sini.";
         }
 
-        if (statImages) {
-            statImages.textContent = profileImages.uploads.length;
-        }
-
-        if (statSaved) {
-            statSaved.textContent = profileImages.saved.length;
-        }
+        if (statImages) statImages.textContent = profileImages.uploads.length;
+        if (statSaved) statSaved.textContent = profileImages.saved.length;
     }
 
     tabs.forEach(tab => {
         tab.addEventListener("click", () => {
-            activeTab = tab.dataset.tab === "saved"
-                ? "saved"
-                : "uploads";
+            activeTab = tab.dataset.tab === "saved" ? "saved" : "uploads";
 
             tabs.forEach(item => {
                 const isActive = item === tab;
@@ -403,10 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ------------------------------------------
 
     async function loadProfileImages() {
-        if (typeof apiFetch !== "function") {
-            console.error("api.js belum dimuat.");
-            return;
-        }
+        if (typeof apiFetch !== "function") return;
 
         try {
             const [uploadsResult, savedResult] = await Promise.all([
@@ -414,28 +414,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 apiFetch("/api/saved")
             ]);
 
-            profileImages.uploads = extractItems(
-                uploadsResult,
-                ["images", "uploads", "items"]
-            );
-
-            profileImages.saved = extractItems(
-                savedResult,
-                ["saved", "images", "items"]
-            );
+            profileImages.uploads = extractItems(uploadsResult, ["images", "uploads", "items"]);
+            profileImages.saved = extractItems(savedResult, ["saved", "images", "items"]);
 
             renderGallery();
         } catch (error) {
             console.error("Gagal memuat data profil:", error);
-
-            if (emptyGalleryTitle) {
-                emptyGalleryTitle.textContent = "Data gagal dimuat";
-            }
-
-            if (emptyGalleryText) {
-                emptyGalleryText.textContent =
-                    error.message || "Silakan coba muat ulang halaman.";
-            }
         }
     }
 
