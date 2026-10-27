@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f9fafb">
+
+    <title>InspoPic - Cari Referensi Gambar</title>
+    <meta name="description" content="Temukan dan simpan referensi gambar untuk inspirasi kreatifmu.">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Masonry: jumlah kolom mengikuti lebar layar */
+        .masonry {
+            columns: 2;
+            column-gap: 1rem;
+        }
+
+        .masonry-item {
+            display: inline-block;
+            position: relative;
+            width: 100%;
+            margin-bottom: 1rem;
+            break-inside: avoid;
+            overflow: hidden;
+            border-radius: 1rem;
+            background: white;
+            box-shadow: 0 2px 8px rgb(0 0 0 / 5%);
+        }
+
+        .gallery-image {
+            display: block;
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+        }
+
+        @media (min-width: 640px) {
+            .masonry {
+                columns: 2;
+                column-gap: 1.25rem;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .masonry {
+                columns: 3;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .masonry {
+                columns: 4;
+            }
+        }
+
+        @media (min-width: 1440px) {
+            .masonry {
+                columns: 5;
+            }
+        }
+
+        /* Animasi modal */
+        .modal-panel {
+            animation: modalFadeIn 0.2s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Mencegah halaman belakang ikut bergulir */
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        /* Kartu yang tidak cocok dengan pencarian */
+        .masonry-item.is-hidden {
+            display: none;
+        }
+    </style>
+
+    <script src="/js/api.js" defer></script>
+    <script src="/js/index.js" defer></script>
+</head>
+
+<body class="min-h-screen bg-gray-50 text-gray-900">
+
+    <header class="sticky top-0 z-50 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur">
+        <nav class="container mx-auto flex items-center justify-between gap-4 px-4 py-3">
+            <!-- Logo InspoPic Terbaru (Lightbulb Lens Merah) -->
+            <a href="/index.html"
+               class="flex shrink-0 items-center gap-2 text-2xl font-bold text-red-600">
+                <!-- Icon SVG -->
+                <svg class="h-8 w-8 text-red-600"
+                     fill="none"
+                     viewBox="0 0 24 24"
+                     stroke="currentColor"
+                     stroke-width="2"
+                     aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                InspoPic
+            </a>
+
+            <!-- Navigasi -->
+            <div class="flex shrink-0 items-center gap-2">
+                <a href="/profile.html"
+                    class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 transition hover:bg-gray-50"
+                    aria-label="Buka profil pengguna">
+                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 font-bold text-red-600">
+                        U
+                    </span>
+                    <span class="hidden font-medium sm:inline">
+                        Profil
+                    </span>
+                </a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="mx-auto min-h-screen w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-10">
+
+        <!-- Judul halaman -->
+        <section class="mb-8">
+            <div class="mb-6">
+                <p class="mb-2 text-sm font-semibold uppercase tracking-widest text-red-600">
+                    InspoPic Gallery
+                </p>
+
+                <h1 class="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                    Temukan Inspirasimu
+                </h1>
+
+                <p class="mt-3 max-w-2xl text-sm leading-6 text-gray-500 sm:text-base">
+                    Kumpulan referensi gambar untuk menemukan ide dan inspirasi kreatifmu.
+                </p>
+            </div>
+
+            <!-- Pencarian dan upload -->
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <form id="searchForm" class="flex min-w-0 flex-1 gap-3">
+                    <label for="searchInput" class="sr-only">Cari gambar</label>
+
+                    <div class="relative min-w-0 flex-1">
+                        <svg
+                            class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            aria-hidden="true"
+                        >
+                            <circle cx="11" cy="11" r="7" stroke-width="2"/>
+                            <path d="m16 16 4 4" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+
+                        <input
+                            id="searchInput"
+                            type="search"
+                            name="q"
+                            placeholder="Cari ide gambar..."
+                            autocomplete="off"
+                            class="w-full rounded-full border border-gray-200 bg-white py-3 pl-12 pr-5 text-sm outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100 sm:text-base"
+                        >
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="shrink-0 rounded-full bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-700 sm:px-7"
+                    >
+                        Cari
+                    </button>
+                </form>
+
+                <button
+                    id="openUploadModal"
+                    type="button"
+                    class="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2 sm:w-auto"
+                >
+                    <span class="text-xl leading-none" aria-hidden="true">+</span>
+                    Upload Gambar
+                </button>
+            </div>
+
+            <p
+                id="searchStatus"
+                class="mt-3 text-sm text-gray-500"
+                aria-live="polite"
+            ></p>
+        </section>
+
+        <!-- Galeri gambar -->
+        <section aria-label="Galeri referensi gambar">
+            <div id="image-gallery" class="masonry">
+
+                <article class="masonry-item group" data-title="Referensi fotografi alam">
+                    <img
+                        src="https://images.unsplash.com/photo-1707343843437-caacff5cfa74?w=700&q=80"
+                        alt="Referensi fotografi alam"
+                        class="gallery-image transition duration-300 group-hover:scale-[1.02]"
+                        loading="lazy"
+                    >
+
+                    <button
+                        type="button"
+                        class="save-image-btn absolute bottom-3 right-3 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white opacity-100 shadow transition hover:bg-red-700 sm:opacity-0 sm:group-hover:opacity-100"
+                        data-image="https://images.unsplash.com/photo-1707343843437-caacff5cfa74?w=1200&q=90"
+                        data-title="Referensi fotografi alam"
+                    >
+                        Pilih Gambar
+                    </button>
+                </article>
+
+                <article class="masonry-item group" data-title="Referensi visual kreatif">
+                    <img
+                        src="https://images.unsplash.com/photo-1524169358666-79f22534bc6e?w=700&q=80"
+                        alt="Referensi visual kreatif"
+                        class="gallery-image transition duration-300 group-hover:scale-[1.02]"
+                        loading="lazy"
+                    >
+
+                    <button
+                        type="button"
+                        class="save-image-btn absolute bottom-3 right-3 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white opacity-100 shadow transition hover:bg-red-700 sm:opacity-0 sm:group-hover:opacity-100"
+                        data-image="https://images.unsplash.com/photo-1524169358666-79f22534bc6e?w=1200&q=90"
+                        data-title="Referensi visual kreatif"
+                    >
+                        Pilih Gambar
+                    </button>
+                </article>
+
+            </div>
+
+            <div id="emptySearch" class="hidden py-16 text-center">
+                <p class="text-lg font-semibold text-gray-700">Gambar tidak ditemukan</p>
+                <p class="mt-2 text-sm text-gray-500">
+                    Coba gunakan kata kunci yang berbeda.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal upload -->
+    <div
+        id="uploadModal"
+        class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-black/50 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="uploadModalTitle"
+    >
+        <div class="modal-panel relative my-auto w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+            <button
+                id="closeUploadModal"
+                type="button"
+                class="absolute right-4 top-4 rounded-full p-2 text-xl text-gray-400 transition hover:bg-gray-100 hover:text-gray-800"
+                aria-label="Tutup modal"
+            >&times;</button>
+
+            <h2 id="uploadModalTitle" class="mb-2 pr-8 text-2xl font-bold">
+                Upload Ide Baru
+            </h2>
+
+            <p class="mb-6 text-sm text-gray-500">
+                Unggah gambar inspirasimu ke Biznet Object Storage.
+            </p>
+
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="mb-4 rounded-xl border-2 border-dashed border-gray-300 p-5 transition hover:border-red-400">
+                    <label for="fileInput" class="mb-3 block font-medium">
+                        Pilih gambar
+                    </label>
+
+                    <input
+                        type="file"
+                        id="fileInput"
+                        name="image"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        required
+                        class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-full file:border-0 file:bg-red-50 file:px-4 file:py-2 file:font-semibold file:text-red-700 hover:file:bg-red-100"
+                    >
+
+                    <p class="mt-2 text-xs text-gray-400">
+                        Format JPG, PNG, WEBP, atau GIF. Maksimal 5 MB.
+                    </p>
+                </div>
+
+                <div class="mb-5">
+                    <label for="imageTitle" class="mb-2 block text-sm font-medium">
+                        Judul gambar
+                    </label>
+
+                    <input
+                        type="text"
+                        id="imageTitle"
+                        name="title"
+                        placeholder="Masukkan judul gambar..."
+                        maxlength="100"
+                        required
+                        class="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                    >
+                </div>
+
+                <button
+                    id="uploadSubmit"
+                    type="submit"
+                    class="w-full rounded-full bg-red-600 py-3 font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    Upload Gambar
+                </button>
+            </form>
+
+            <p id="uploadStatus" class="mt-4 text-center text-sm" role="status" aria-live="polite"></p>
+        </div>
+    </div>
+
+    <!-- Modal aksi gambar -->
+    <div
+        id="imageModal"
+        class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-black/60 p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="imageModalTitle"
+    >
+        <div class="relative my-auto w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <button
+                id="closeImageModal"
+                type="button"
+                class="absolute right-3 top-3 rounded-full p-2 text-xl text-gray-500 hover:bg-gray-100"
+                aria-label="Tutup modal"
+            >&times;</button>
+
+            <img
+                id="selectedImagePreview"
+                src=""
+                alt=""
+                class="mb-4 max-h-80 w-full rounded-xl object-contain"
+            >
+
+            <h2 id="imageModalTitle" class="mb-4 pr-8 text-lg font-bold">
+                Pilihan Gambar
+            </h2>
+
+            <div class="flex flex-col gap-3">
+                <button
+                    id="saveSelectedImage"
+                    type="button"
+                    class="w-full rounded-full bg-red-600 py-3 font-semibold text-white transition hover:bg-red-700"
+                >
+                    Simpan Gambar
+                </button>
+
+                <button
+                    id="openOriginalImage"
+                    type="button"
+                    class="w-full rounded-full border border-gray-200 py-3 font-semibold transition hover:bg-gray-50"
+                >
+                    Lihat Gambar Asli
+                </button>
+
+                <!-- Tombol 2: Unduh Gambar ke HP/Laptop -->
+                <button
+                    id="downloadImage"
+                    type="button"
+                    class="w-full rounded-full border border-gray-300 bg-gray-100 py-3 font-semibold text-gray-800 transition hover:bg-gray-200"
+                >
+                    Unduh Gambar
+                </button>
+            </div>
+
+            <p id="imageActionStatus" class="mt-3 text-center text-sm text-gray-500" role="status" aria-live="polite"></p>
+        </div>
+    </div>
+
+    <!-- Footer dimuat dari footer.html -->
+    <div id="footer-container"></div>
+</body>
+</html>

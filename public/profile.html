@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Profil Pengguna | InspoPic</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Konfigurasi tema InspoPic -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: "#dc2626",
+                        "brand-light": "#fef2f2",
+                        "soft-pink": "#fff1f2",
+                        "soft-purple": "#f5f3ff"
+                    },
+                    boxShadow: {
+                        soft: "0 8px 30px rgba(15, 23, 42, 0.06)"
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+        /* Pengaturan dasar halaman */
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: #fafafa;
+            color: #1f2937;
+        }
+
+        /* Foto profil */
+        .profile-avatar {
+            background: linear-gradient(135deg, #fecdd3, #fbcfe8, #ddd6fe);
+        }
+
+        /* Animasi tombol */
+        .button-hover {
+            transition:
+                transform 0.2s ease,
+                background-color 0.2s ease,
+                box-shadow 0.2s ease;
+        }
+
+        .button-hover:hover {
+            transform: translateY(-2px);
+        }
+
+        /* Kartu gambar */
+        .pin-card {
+            break-inside: avoid;
+            margin-bottom: 18px;
+        }
+
+        .pin-image {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 18px;
+            transition: transform 0.3s ease;
+        }
+
+        .pin-card:hover .pin-image {
+            transform: scale(1.015);
+        }
+
+        /* Layout galeri masonry */
+        .masonry-gallery {
+            columns: 2;
+            column-gap: 18px;
+        }
+
+        @media (min-width: 640px) {
+            .masonry-gallery {
+                columns: 3;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .masonry-gallery {
+                columns: 4;
+            }
+        }
+
+        /* Dialog edit profil */
+        .modal-backdrop {
+            background: rgba(15, 23, 42, 0.45);
+            backdrop-filter: blur(5px);
+        }
+
+        /* Menghindari halaman bergeser saat modal terbuka */
+        body.modal-open {
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+
+    <!-- ==========================================
+         HEADER
+         Header dimuat dari header.html
+    =========================================== -->
+    <div id="header-container"></div>
+
+    <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+
+        <!-- ==========================================
+             PROFIL PENGGUNA
+        =========================================== -->
+        <section class="relative overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-soft">
+
+            <!-- Dekorasi latar profil -->
+            <div class="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full bg-pink-100/70 blur-3xl"></div>
+            <div class="pointer-events-none absolute -left-10 top-20 h-40 w-40 rounded-full bg-purple-100/60 blur-3xl"></div>
+
+            <div class="relative px-5 py-8 sm:px-10 sm:py-10">
+
+                <!-- Tombol edit profil -->
+                <div class="mb-6 flex justify-end">
+                    <button
+                        id="openEditProfile"
+                        type="button"
+                        class="button-hover inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                    >
+                        <svg
+                            class="h-4 w-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="1.8"
+                                d="m16.862 4.487 2.651 2.651M4 20l4.5-.9L19.2 8.4a1.875 1.875 0 0 0-2.65-2.65L5.85 16.45 4 20Z"
+                            />
+                        </svg>
+                        Edit Profil
+                    </button>
+                </div>
+
+                <!-- Informasi utama profil -->
+                <div class="flex flex-col items-center text-center">
+
+                    <!-- Avatar -->
+                    <div class="profile-avatar relative mb-5 flex h-28 w-28 items-center justify-center rounded-full border-4 border-white shadow-lg sm:h-32 sm:w-32">
+                        <span
+                            id="avatarInitial"
+                            class="text-4xl font-extrabold text-red-600 sm:text-5xl"
+                        >
+                            U
+                        </span>
+
+                        <span class="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-4 border-white bg-green-400"></span>
+                    </div>
+
+                    <!-- Nama dan username -->
+                    <h1
+                        id="profileName"
+                        class="text-2xl font-extrabold tracking-tight text-gray-900 sm:text-3xl"
+                    >
+                        Pengguna InspoPic
+                    </h1>
+
+                    <p
+                        id="profileUsername"
+                        class="mt-1 text-sm font-medium text-gray-500"
+                    >
+                        @pengguna
+                    </p>
+
+                    <!-- Bio -->
+                    <p
+                        id="profileBio"
+                        class="mt-4 max-w-xl text-sm leading-7 text-gray-600 sm:text-base"
+                    >
+                        Mengumpulkan inspirasi kecil untuk hari-hari yang lebih indah.
+                        Temukan ide, simpan inspirasi, dan bagikan kreativitasmu.
+                    </p>
+
+                    <!-- Lokasi dan tanggal bergabung -->
+                    <div class="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-gray-500 sm:text-sm">
+
+                        <span class="inline-flex items-center gap-1.5">
+                            <svg
+                                class="h-4 w-4 text-red-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="1.8"
+                                    d="M12 21s7-5.5 7-12a7 7 0 1 0-14 0c0 6.5 7 12 7 12Z"
+                                />
+                                <circle cx="12" cy="9" r="2.3" stroke-width="1.8"/>
+                            </svg>
+                            <span id="profileLocation">Indonesia</span>
+                        </span>
+
+                        <span class="inline-flex items-center gap-1.5">
+                            <svg
+                                class="h-4 w-4 text-red-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                aria-hidden="true"
+                            >
+                                <rect x="3" y="5" width="18" height="16" rx="2" stroke-width="1.8"/>
+                                <path d="M16 3v4M8 3v4M3 10h18" stroke-width="1.8" stroke-linecap="round"/>
+                            </svg>
+                            Bergabung di InspoPic
+                        </span>
+                    </div>
+
+                    <!-- Statistik -->
+                    <div class="mt-8 grid w-full max-w-md grid-cols-3 divide-x divide-gray-100 rounded-2xl border border-gray-100 bg-white/80 py-4">
+
+                        <div class="px-2">
+                            <p id="statImages" class="text-xl font-extrabold text-gray-900">0</p>
+                            <p class="mt-1 text-xs text-gray-500 sm:text-sm">Gambar</p>
+                        </div>
+
+                        <div class="px-2">
+                            <p id="statSaved" class="text-xl font-extrabold text-gray-900">0</p>
+                            <p class="mt-1 text-xs text-gray-500 sm:text-sm">Disimpan</p>
+                        </div>
+
+                        <div class="px-2">
+                            <p id="statCollections" class="text-xl font-extrabold text-gray-900">0</p>
+                            <p class="mt-1 text-xs text-gray-500 sm:text-sm">Koleksi</p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==========================================
+             NAVIGASI GALERI PROFIL
+        =========================================== -->
+        <section class="mt-10">
+
+            <div class="flex flex-col gap-5 border-b border-gray-200 sm:flex-row sm:items-center sm:justify-between">
+
+                <div>
+                    <h2 class="text-xl font-extrabold text-gray-900 sm:text-2xl">
+                        Ruang Inspirasiku
+                    </h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Semua ide dan gambar favoritmu dalam satu tempat.
+                    </p>
+                </div>
+
+                <!-- Tab profil -->
+                <div class="flex gap-6 overflow-x-auto">
+                    <button
+                        type="button"
+                        class="profile-tab whitespace-nowrap border-b-2 border-red-600 px-1 pb-3 text-sm font-bold text-red-600"
+                        data-tab="uploads"
+                    >
+                        Unggahanku
+                    </button>
+
+                    <button
+                        type="button"
+                        class="profile-tab whitespace-nowrap border-b-2 border-transparent px-1 pb-3 text-sm font-semibold text-gray-500 transition hover:text-red-600"
+                        data-tab="saved"
+                    >
+                        Tersimpan
+                    </button>
+                </div>
+            </div>
+
+            <!-- Keterangan tab -->
+            <div class="mb-6 mt-6 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p id="galleryHeading" class="font-bold text-gray-800">
+                        Gambar yang kamu unggah
+                    </p>
+                    <p id="galleryDescription" class="mt-1 text-sm text-gray-500">
+                        Inspirasi yang kamu bagikan kepada dunia.
+                    </p>
+                </div>
+
+                <a
+                    href="/index.html"
+                    class="button-hover inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+                >
+                    <svg
+                        class="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M12 5v14M5 12h14"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                        />
+                    </svg>
+                    Cari Inspirasi
+                </a>
+            </div>
+
+            <!-- ==========================================
+                 GALERI GAMBAR
+                 Contoh gambar sementara
+            =========================================== -->
+            <div id="profileGallery" class="masonry-gallery">
+
+                <article
+                    class="pin-card group"
+                    data-tab="uploads"
+                    data-title="Inspirasi dekorasi kamar minimalis"
+                >
+                    <div class="relative overflow-hidden rounded-[18px] bg-pink-50">
+                        <img
+                            class="pin-image"
+                            src="https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=700&q=85"
+                            alt="Inspirasi dekorasi kamar minimalis"
+                            loading="lazy"
+                        >
+
+                        <span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
+                            Interior
+                        </span>
+                    </div>
+
+                    <div class="px-1 pt-3">
+                        <h3 class="text-sm font-bold leading-5 text-gray-800">
+                            Inspirasi dekorasi kamar minimalis
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Ide ruang nyaman
+                        </p>
+                    </div>
+                </article>
+
+                <article
+                    class="pin-card group"
+                    data-tab="uploads"
+                    data-title="Bunga pastel yang cantik"
+                >
+                    <div class="relative overflow-hidden rounded-[18px] bg-rose-50">
+                        <img
+                            class="pin-image"
+                            src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=700&q=85"
+                            alt="Bunga pastel yang cantik"
+                            loading="lazy"
+                        >
+
+                        <span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
+                            Bunga
+                        </span>
+                    </div>
+
+                    <div class="px-1 pt-3">
+                        <h3 class="text-sm font-bold leading-5 text-gray-800">
+                            Bunga pastel yang cantik
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Warna untuk inspirasi
+                        </p>
+                    </div>
+                </article>
+
+                <article
+                    class="pin-card group"
+                    data-tab="saved"
+                    data-title="Inspirasi meja kerja aesthetic"
+                >
+                    <div class="relative overflow-hidden rounded-[18px] bg-purple-50">
+                        <img
+                            class="pin-image"
+                            src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=700&q=85"
+                            alt="Inspirasi meja kerja aesthetic"
+                            loading="lazy"
+                        >
+
+                        <span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
+                            Workspace
+                        </span>
+                    </div>
+
+                    <div class="px-1 pt-3">
+                        <h3 class="text-sm font-bold leading-5 text-gray-800">
+                            Inspirasi meja kerja aesthetic
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Ruang kerja produktif
+                        </p>
+                    </div>
+                </article>
+
+                <article
+                    class="pin-card group"
+                    data-tab="saved"
+                    data-title="Inspirasi outfit kasual"
+                >
+                    <div class="relative overflow-hidden rounded-[18px] bg-orange-50">
+                        <img
+                            class="pin-image"
+                            src="https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=700&q=85"
+                            alt="Inspirasi outfit kasual"
+                            loading="lazy"
+                        >
+
+                        <span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
+                            Fashion
+                        </span>
+                    </div>
+
+                    <div class="px-1 pt-3">
+                        <h3 class="text-sm font-bold leading-5 text-gray-800">
+                            Inspirasi outfit kasual
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Referensi gaya sehari-hari
+                        </p>
+                    </div>
+                </article>
+
+                <article
+                    class="pin-card group"
+                    data-tab="uploads"
+                    data-title="Sudut baca yang nyaman"
+                >
+                    <div class="relative overflow-hidden rounded-[18px] bg-amber-50">
+                        <img
+                            class="pin-image"
+                            src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=700&q=85"
+                            alt="Sudut baca yang nyaman"
+                            loading="lazy"
+                        >
+
+                        <span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
+                            Lifestyle
+                        </span>
+                    </div>
+
+                    <div class="px-1 pt-3">
+                        <h3 class="text-sm font-bold leading-5 text-gray-800">
+                            Sudut baca yang nyaman
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Waktu santai dan membaca
+                        </p>
+                    </div>
+                </article>
+
+                <article
+                    class="pin-card group"
+                    data-tab="uploads"
+                    data-title="Inspirasi alam dan pegunungan"
+                >
+                    <div class="relative overflow-hidden rounded-[18px] bg-emerald-50">
+                        <img
+                            class="pin-image"
+                            src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=700&q=85"
+                            alt="Inspirasi alam dan pegunungan"
+                            loading="lazy"
+                        >
+
+                        <span class="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-gray-700 shadow-sm">
+                            Alam
+                        </span>
+                    </div>
+
+                    <div class="px-1 pt-3">
+                        <h3 class="text-sm font-bold leading-5 text-gray-800">
+                            Inspirasi alam dan pegunungan
+                        </h3>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Menemukan ketenangan
+                        </p>
+                    </div>
+                </article>
+
+            </div>
+
+            <!-- Tampilan saat galeri kosong -->
+            <div id="emptyGallery" class="hidden py-16 text-center">
+
+                <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
+                    <svg
+                        class="h-9 w-9 text-red-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="3"
+                            stroke-width="1.7"
+                        />
+                        <circle cx="8.5" cy="8.5" r="1.5" stroke-width="1.7"/>
+                        <path
+                            d="m21 15-5-5L5 21"
+                            stroke-width="1.7"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                    </svg>
+                </div>
+
+                <h3 id="emptyGalleryTitle" class="mt-5 text-lg font-bold text-gray-800">
+                    Belum ada gambar
+                </h3>
+
+                <p id="emptyGalleryText" class="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">
+                    Mulai kumpulkan inspirasi favoritmu dan buat galeri versimu sendiri.
+                </p>
+
+                <a
+                    href="/index.html"
+                    class="button-hover mt-5 inline-flex rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700"
+                >
+                    Jelajahi Gambar
+                </a>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- ==========================================
+         MODAL EDIT PROFIL
+    =========================================== -->
+    <div
+        id="editProfileModal"
+        class="modal-backdrop fixed inset-0 z-[100] hidden items-center justify-center overflow-y-auto p-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="editProfileTitle"
+    >
+        <div class="my-auto w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl sm:p-8">
+
+            <!-- Header modal -->
+            <div class="mb-6 flex items-start justify-between gap-4">
+                <div>
+                    <h2 id="editProfileTitle" class="text-xl font-extrabold text-gray-900">
+                        Edit Profil
+                    </h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Sesuaikan profilmu agar terasa lebih personal.
+                    </p>
+                </div>
+
+                <button
+                    id="closeEditProfile"
+                    type="button"
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+                    aria-label="Tutup edit profil"
+                >
+                    <svg
+                        class="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="m6 6 12 12M18 6 6 18"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                        />
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Form edit profil -->
+            <form id="editProfileForm" class="space-y-5">
+
+                <div>
+                    <label for="editName" class="mb-2 block text-sm font-semibold text-gray-700">
+                        Nama lengkap
+                    </label>
+
+                    <input
+                        id="editName"
+                        name="name"
+                        type="text"
+                        maxlength="60"
+                        required
+                        placeholder="Masukkan nama kamu"
+                        class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-red-400 focus:ring-4 focus:ring-red-50"
+                    >
+                </div>
+
+                <div>
+                    <label for="editUsername" class="mb-2 block text-sm font-semibold text-gray-700">
+                        Username
+                    </label>
+
+                    <div class="flex items-center rounded-xl border border-gray-200 px-4 focus-within:border-red-400 focus-within:ring-4 focus-within:ring-red-50">
+                        <span class="mr-1 text-sm text-gray-400">@</span>
+                        <input
+                            id="editUsername"
+                            name="username"
+                            type="text"
+                            maxlength="30"
+                            pattern="[A-Za-z0-9_]+"
+                            required
+                            placeholder="username"
+                            class="w-full border-0 bg-transparent py-3 text-sm outline-none"
+                        >
+                    </div>
+
+                    <p class="mt-1.5 text-xs text-gray-400">
+                        Gunakan huruf, angka, atau garis bawah.
+                    </p>
+                </div>
+
+                <div>
+                    <label for="editBio" class="mb-2 block text-sm font-semibold text-gray-700">
+                        Bio
+                    </label>
+
+                    <textarea
+                        id="editBio"
+                        name="bio"
+                        rows="3"
+                        maxlength="200"
+                        placeholder="Ceritakan sedikit tentang dirimu..."
+                        class="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-red-400 focus:ring-4 focus:ring-red-50"
+                    ></textarea>
+
+                    <p class="mt-1 text-right text-xs text-gray-400">
+                        <span id="bioCount">0</span>/200 karakter
+                    </p>
+                </div>
+
+                <div>
+                    <label for="editLocation" class="mb-2 block text-sm font-semibold text-gray-700">
+                        Lokasi
+                    </label>
+
+                    <input
+                        id="editLocation"
+                        name="location"
+                        type="text"
+                        maxlength="60"
+                        placeholder="Contoh: Yogyakarta, Indonesia"
+                        class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-red-400 focus:ring-4 focus:ring-red-50"
+                    >
+                </div>
+
+                <p id="editProfileStatus" class="hidden text-sm" role="status"></p>
+
+                <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+                    <button
+                        id="cancelEditProfile"
+                        type="button"
+                        class="button-hover rounded-full border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                    >
+                        Batal
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="button-hover rounded-full bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-sm hover:bg-red-700"
+                    >
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- ==========================================
+         FOOTER
+         Footer dimuat dari footer.html
+    =========================================== -->
+    <div id="footer-container"></div>
+
+   <!-- Helper API dimuat terlebih dahulu -->
+    <script src="/js/api.js"></script>
+
+    <!-- JavaScript khusus halaman profil -->
+    <script src="/js/profile.js"></script>
+
+</body>
+</html>
