@@ -61,6 +61,12 @@
             }
         }
 
+        @media (min-width: 1536px) {
+            .masonry {
+                columns: 6;
+            }
+        }
+
         /* Animasi modal */
         .modal-panel {
             animation: modalFadeIn 0.2s ease-out;
@@ -127,9 +133,9 @@
         </nav>
     </header>
 
-    <main class="mx-auto min-h-screen w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-10">
+    <main class="min-h-screen w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-10 xl:px-14">
 
-       <!-- Hero / Judul halaman -->
+        <!-- Hero / Judul halaman -->
         <section class="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-900 shadow-xl shadow-red-900/20 sm:mb-10 sm:rounded-3xl">
 
             <!-- Pola titik tipis -->
@@ -144,19 +150,19 @@
             <div class="absolute -bottom-32 -left-16 h-48 w-48 rounded-full bg-red-400/20 blur-3xl sm:h-72 sm:w-72" aria-hidden="true"></div>
 
             <div class="relative px-5 py-8 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
-                <div class="mx-auto max-w-3xl text-center">
+                <div class="w-full text-center">
 
                     <span class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-red-50 backdrop-blur sm:px-4 sm:py-1.5 sm:text-xs sm:tracking-[0.2em]">
                         <span class="h-1.5 w-1.5 rounded-full bg-white"></span>
                         InspoPic Gallery
                     </span>
 
-                    <h1 class="mt-4 text-3xl font-extrabold leading-tight tracking-tight text-white sm:mt-6 sm:text-5xl lg:text-6xl">
+                    <h1 class="mt-4 text-3xl font-extrabold leading-tight tracking-tight text-white sm:mt-6 sm:text-5xl lg:text-6xl xl:text-7xl">
                         Temukan Inspirasimu
                     </h1>
 
                     <!-- Pencarian -->
-                    <form id="searchForm" class="mx-auto mt-5 flex max-w-2xl gap-1.5 rounded-full bg-white p-1 shadow-2xl shadow-red-950/30 sm:mt-8 sm:gap-2 sm:p-1.5">
+                    <form id="searchForm" class="mx-auto mt-5 flex w-full gap-1.5 rounded-full bg-white p-1 shadow-2xl shadow-red-950/30 sm:mt-8 sm:gap-2 sm:p-1.5">
                         <label for="searchInput" class="sr-only">Cari gambar</label>
 
                         <div class="relative min-w-0 flex-1">
@@ -195,45 +201,8 @@
 
         <!-- Galeri gambar -->
         <section aria-label="Galeri referensi gambar">
-            <div id="image-gallery" class="masonry">
-
-                <article class="masonry-item group" data-title="Referensi fotografi alam">
-                    <img
-                        src="https://images.unsplash.com/photo-1707343843437-caacff5cfa74?w=700&q=80"
-                        alt="Referensi fotografi alam"
-                        class="gallery-image transition duration-300 group-hover:scale-[1.02]"
-                        loading="lazy"
-                    >
-
-                    <button
-                        type="button"
-                        class="save-image-btn absolute bottom-3 right-3 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white opacity-100 shadow transition hover:bg-red-700 sm:opacity-0 sm:group-hover:opacity-100"
-                        data-image="https://images.unsplash.com/photo-1707343843437-caacff5cfa74?w=1200&q=90"
-                        data-title="Referensi fotografi alam"
-                    >
-                        Pilih Gambar
-                    </button>
-                </article>
-
-                <article class="masonry-item group" data-title="Referensi visual kreatif">
-                    <img
-                        src="https://images.unsplash.com/photo-1524169358666-79f22534bc6e?w=700&q=80"
-                        alt="Referensi visual kreatif"
-                        class="gallery-image transition duration-300 group-hover:scale-[1.02]"
-                        loading="lazy"
-                    >
-
-                    <button
-                        type="button"
-                        class="save-image-btn absolute bottom-3 right-3 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white opacity-100 shadow transition hover:bg-red-700 sm:opacity-0 sm:group-hover:opacity-100"
-                        data-image="https://images.unsplash.com/photo-1524169358666-79f22534bc6e?w=1200&q=90"
-                        data-title="Referensi visual kreatif"
-                    >
-                        Pilih Gambar
-                    </button>
-                </article>
-
-            </div>
+            <!-- Kartu gambar diisi otomatis oleh js/index.js dari unggahan pengguna -->
+            <div id="image-gallery" class="masonry"></div>
 
             <div id="emptySearch" class="hidden py-16 text-center">
                 <p class="text-lg font-semibold text-gray-700">Gambar tidak ditemukan</p>
