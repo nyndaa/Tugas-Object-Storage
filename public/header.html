@@ -1,33 +1,41 @@
+
 <header class="sticky top-0 z-50 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur">
     <nav class="container mx-auto flex items-center justify-between gap-4 px-4 py-3">
-        <!-- Logo InspoPic Terbaru (Warna Merah) -->
+
+        <!-- Logo InspoPic -->
         <a href="/index.html"
            class="flex shrink-0 items-center gap-2 text-2xl font-bold text-red-600">
-            <!-- Icon SVG Lightbulb Lens -->
+
             <svg class="h-8 w-8 text-red-600"
                  fill="none"
                  viewBox="0 0 24 24"
                  stroke="currentColor"
                  stroke-width="2"
                  aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M9.663 17h4.674M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
             </svg>
+
             InspoPic
         </a>
 
-        <!-- Navigasi -->
+        <!-- Profil user -->
         <div class="flex shrink-0 items-center gap-2">
+            <a href="/profile.html"
+               class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 transition hover:bg-gray-50"
+               aria-label="Buka profil pengguna">
 
-            <a
-                href="/profile.html"
-                class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 transition hover:bg-gray-50"
-                aria-label="Buka profil pengguna"
-            >
-                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 font-bold text-red-600">
+                <!-- Inisial user diambil dari nama profil -->
+                <span id="headerAvatarInitial"
+                      class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 font-bold text-red-600">
                     U
                 </span>
-                <span class="hidden font-medium sm:inline">
-                    Profil
+
+                <!-- Nama user diambil dari data profil -->
+                <span id="headerProfileName"
+                      class="max-w-40 truncate font-medium sm:inline">
+                    Pengguna InspoPic
                 </span>
             </a>
         </div>

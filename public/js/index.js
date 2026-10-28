@@ -42,25 +42,20 @@ document.addEventListener("DOMContentLoaded", () => {
     // 2. MEMUAT HEADER DAN FOOTER
     // ------------------------------------------
 
-    async function loadComponent(containerId, filePath) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
-
-        try {
-            const response = await fetch(filePath);
-
-            if (!response.ok) {
-                throw new Error(`Gagal memuat ${filePath}`);
-            }
-
-            container.innerHTML = await response.text();
-        } catch (error) {
-            console.error("Kesalahan komponen:", error);
-        }
+  async function loadComponent(containerId, filePath) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    try {
+        const response = await fetch(filePath);
+        if (!response.ok) throw new Error(`Gagal memuat ${filePath}`);
+        container.innerHTML = await response.text();
+    } catch (error) {
+        console.error("Kesalahan komponen:", error);
     }
+}
 
-    loadComponent("header-container", "/header.html");
-    loadComponent("footer-container", "/footer.html");
+// Header dimuat oleh header.js
+loadComponent("footer-container", "/footer.html");
 
     // ------------------------------------------
     // 3. MODAL

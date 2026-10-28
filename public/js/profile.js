@@ -69,9 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    loadComponent("header-container", "/header.html");
-    loadComponent("footer-container", "/footer.html");
-
+   loadComponent("footer-container", "/footer.html");
     // ------------------------------------------
     // 3. DATA PROFIL
     // ------------------------------------------
@@ -109,20 +107,16 @@ document.addEventListener("DOMContentLoaded", () => {
     // ------------------------------------------
 
     function renderProfile() {
-        if (profileName) profileName.textContent = profile.name;
-        if (profileUsername) profileUsername.textContent = `@${profile.username}`;
-        if (profileBio) profileBio.textContent = profile.bio || "Belum ada bio.";
-        if (profileLocation) profileLocation.textContent = profile.location || "Lokasi belum diatur";
+    if (profileName) profileName.textContent = profile.name;
+    if (profileUsername) profileUsername.textContent = `@${profile.username}`;
+    if (profileBio) profileBio.textContent = profile.bio || "Belum ada bio.";
+    if (profileLocation) profileLocation.textContent = profile.location || "Lokasi belum diatur";
 
-        if (avatarInitial) {
-            avatarInitial.textContent = profile.name.trim().charAt(0).toUpperCase() || "U";
-        }
-
-        const headerAvatar = document.querySelector("#header-container a[href='/profile.html'] span");
-        if (headerAvatar && avatarInitial) {
-            headerAvatar.textContent = avatarInitial.textContent;
-        }
+    if (avatarInitial) {
+        avatarInitial.textContent = profile.name.trim().charAt(0).toUpperCase() || "U";
     }
+    // Header disinkronkan oleh header.js (event inspopicProfileUpdated)
+}
 
     renderProfile();
 
@@ -191,6 +185,9 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("inspopicProfile", JSON.stringify(updatedProfile));
             profile = updatedProfile;
             renderProfile();
+
+            window.dispatchEvent(new Event("inspopicProfileUpdated"));
+
             closeModal();
         } catch (error) {
             console.error("Gagal menyimpan profil:", error);
