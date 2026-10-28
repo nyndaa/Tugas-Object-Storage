@@ -106,6 +106,33 @@
     <div id="header-container"></div>
 
     <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        
+    <!-- Navigasi kembali ke beranda -->
+    <div class="mb-5">
+        <a
+            href="/index.html"
+            class="group inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-200"
+            aria-label="Kembali ke beranda InspoPic"
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5 transition-transform group-hover:-translate-x-1"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M15 19l-7-7 7-7"
+                />
+            </svg>
+
+            Kembali ke beranda
+        </a>
+    </div>
 
         <!-- PROFIL PENGGUNA -->
         <section class="relative overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-soft">
@@ -319,6 +346,32 @@
             </form>
         </div>
     </div>
+
+        
+    <!-- Floating Action Button: Upload gambar -->
+    <a
+        href="/index.html?upload=1"
+        class="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-600/30 transition duration-200 hover:scale-105 hover:bg-red-700 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-red-200 sm:bottom-8 sm:right-8 sm:h-16 sm:w-16"
+        aria-label="Upload gambar baru"
+        title="Upload gambar baru"
+    >
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-7 w-7"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+        >
+            <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 5v14m-7-7h14"
+            />
+        </svg>
+    </a>
+
 
     <!-- FOOTER -->
     <div id="footer-container"></div>

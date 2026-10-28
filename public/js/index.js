@@ -162,11 +162,18 @@ document.addEventListener("DOMContentLoaded", () => {
         filterGallery();
     });
 
-    const query = new URLSearchParams(window.location.search).get("q");
+        
+    //Membuka modal upload otomatis jika pengguna datang dari tombol tambah gambar pada halaman profil.
+    const urlParams = new URLSearchParams(window.location.search);
 
-    if (query && searchInput) {
-        searchInput.value = query;
+    if (urlParams.get("upload") === "1") {
+        const uploadButton = document.getElementById("openUploadModal");
+
+        if (uploadButton) {
+            uploadButton.click();
+        }
     }
+
 
     // ------------------------------------------
     // 5. MEMBUAT KARTU GALERI
