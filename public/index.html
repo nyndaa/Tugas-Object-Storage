@@ -129,64 +129,68 @@
 
     <main class="mx-auto min-h-screen w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-10">
 
-        <!-- Judul halaman -->
-        <section class="mb-8">
-            <div class="mb-6">
-                <p class="mb-2 text-sm font-semibold uppercase tracking-widest text-red-600">
-                    InspoPic Gallery
-                </p>
+       <!-- Hero / Judul halaman -->
+        <section class="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-red-600 via-red-700 to-red-900 shadow-xl shadow-red-900/20 sm:mb-10 sm:rounded-3xl">
 
-                <h1 class="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-                    Temukan Inspirasimu
-                </h1>
+            <!-- Pola titik tipis -->
+            <div
+                class="absolute inset-0 opacity-20"
+                style="background-image: radial-gradient(rgba(255,255,255,.55) 1px, transparent 1px); background-size: 22px 22px;"
+                aria-hidden="true"
+            ></div>
 
-                <p class="mt-3 max-w-2xl text-sm leading-6 text-gray-500 sm:text-base">
-                    Kumpulan referensi gambar untuk menemukan ide dan inspirasi kreatifmu.
-                </p>
-            </div>
+            <!-- Cahaya lembut -->
+            <div class="absolute -right-24 -top-24 h-52 w-52 rounded-full bg-white/10 blur-3xl sm:h-80 sm:w-80" aria-hidden="true"></div>
+            <div class="absolute -bottom-32 -left-16 h-48 w-48 rounded-full bg-red-400/20 blur-3xl sm:h-72 sm:w-72" aria-hidden="true"></div>
 
-            <!-- Pencarian dan upload -->
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <form id="searchForm" class="flex min-w-0 flex-1 gap-3">
-                    <label for="searchInput" class="sr-only">Cari gambar</label>
+            <div class="relative px-5 py-8 sm:px-10 sm:py-16 lg:px-16 lg:py-20">
+                <div class="mx-auto max-w-3xl text-center">
 
-                    <div class="relative min-w-0 flex-1">
-                        <svg
-                            class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            aria-hidden="true"
+                    <span class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-red-50 backdrop-blur sm:px-4 sm:py-1.5 sm:text-xs sm:tracking-[0.2em]">
+                        <span class="h-1.5 w-1.5 rounded-full bg-white"></span>
+                        InspoPic Gallery
+                    </span>
+
+                    <h1 class="mt-4 text-3xl font-extrabold leading-tight tracking-tight text-white sm:mt-6 sm:text-5xl lg:text-6xl">
+                        Temukan Inspirasimu
+                    </h1>
+
+                    <!-- Pencarian -->
+                    <form id="searchForm" class="mx-auto mt-5 flex max-w-2xl gap-1.5 rounded-full bg-white p-1 shadow-2xl shadow-red-950/30 sm:mt-8 sm:gap-2 sm:p-1.5">
+                        <label for="searchInput" class="sr-only">Cari gambar</label>
+
+                        <div class="relative min-w-0 flex-1">
+                            <svg
+                                class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 sm:left-4 sm:h-5 sm:w-5"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                aria-hidden="true"
+                            >
+                                <circle cx="11" cy="11" r="7" stroke-width="2"/>
+                                <path d="m16 16 4 4" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+
+                            <input
+                                id="searchInput"
+                                type="search"
+                                name="q"
+                                placeholder="Cari ide gambar..."
+                                autocomplete="off"
+                                class="w-full rounded-full bg-transparent py-2.5 pl-10 pr-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 sm:py-3 sm:pl-12 sm:pr-4 sm:text-base"
+                            >
+                        </div>
+
+                        <button
+                            type="submit"
+                            class="shrink-0 rounded-full bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 sm:px-8 sm:py-3"
                         >
-                            <circle cx="11" cy="11" r="7" stroke-width="2"/>
-                            <path d="m16 16 4 4" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-
-                        <input
-                            id="searchInput"
-                            type="search"
-                            name="q"
-                            placeholder="Cari ide gambar..."
-                            autocomplete="off"
-                            class="w-full rounded-full border border-gray-200 bg-white py-3 pl-12 pr-5 text-sm outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100 sm:text-base"
-                        >
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="shrink-0 rounded-full bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-700 sm:px-7"
-                    >
-                        Cari
-                    </button>
-                </form>
+                            Cari
+                        </button>
+                    </form>
+                </div>
             </div>
-
-            <p
-                id="searchStatus"
-                class="mt-3 text-sm text-gray-500"
-                aria-live="polite"
-            ></p>
         </section>
 
         <!-- Galeri gambar -->
