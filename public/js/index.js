@@ -288,45 +288,51 @@ loadComponent("footer-container", "/footer.html");
     });
 
     // ------------------------------------------
-    // 8. SIMPAN GAMBAR KE DATABASE MYSQL (/api/saved)
+    // 8. SIMPAN GAMBAR KE OBJECT STORAGE(/api/saved)
     // ------------------------------------------
 
     document.getElementById("saveSelectedImage")
-        ?.addEventListener("click", async () => {
-            if (!selectedImageUrl) return;
+    ?.addEventListener("click", async () => {
+        if (!selectedImageUrl) return;
+
+        if (imageActionStatus) {
+            imageActionStatus.textContent = "Menyimpan gambar ke koleksi...";
+            imageActionStatus.className =
+                "mt-3 text-center text-sm text-gray-500";
+        }
+
+        try {
+            const result = await apiFetch("/api/saved", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    image_url: selectedImageUrl,
+                    title: selectedImageTitle || "Gambar InspoPic",
+                }),
+            });
 
             if (imageActionStatus) {
-                imageActionStatus.textContent = "Menyimpan gambar ke profil...";
-                imageActionStatus.className = "mt-3 text-center text-sm text-gray-500";
+                imageActionStatus.textContent =
+                    "✓ " + (result.message || "Gambar berhasil disimpan.");
+
+                imageActionStatus.className =
+                    "mt-3 text-center text-sm font-semibold text-green-600";
             }
 
-            try {
-                const result = await apiFetch("/api/saved", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        image_url: selectedImageUrl,
-                        title: selectedImageTitle || "Gambar InspoPic",
-                    }),
-                });
+        } catch (error) {
+            console.error("Gagal menyimpan gambar:", error);
 
-                if (imageActionStatus) {
-                    imageActionStatus.textContent = "✓ " + (result.message || "Gambar berhasil disimpan.");
-                    imageActionStatus.className = "mt-3 text-center text-sm font-semibold text-green-600";
-                }
-            } catch (error) {
-                console.error("Gagal menyimpan gambar:", error);
+            if (imageActionStatus) {
+                imageActionStatus.textContent =
+                    error.message || "Gagal menyimpan gambar. Coba lagi.";
 
-                if (imageActionStatus) {
-                    imageActionStatus.textContent =
-                        error.message || "Gagal menyimpan gambar. Coba lagi.";
-                    imageActionStatus.className = "mt-3 text-center text-sm font-semibold text-red-600";
-                }
+                imageActionStatus.className =
+                    "mt-3 text-center text-sm font-semibold text-red-600";
             }
-        });
-
+        }
+    });
     // ------------------------------------------
     // 8.5 BUKA GAMBAR ASLI
     // ------------------------------------------

@@ -1,57 +1,47 @@
+
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
-const mysql = require("mysql2/promise");
 const crypto = require("crypto");
 const path = require("path");
+const fs = require("fs/promises");
 
 const {
-  S3Client,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  PutBucketPolicyCommand,
+    S3Client,
+    GetObjectCommand,
+    PutObjectCommand,
+    DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
+
+// ==================================================
+// 1. KONFIGURASI DASAR
+// ==================================================
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-// ==================================================
-// 1. VALIDASI KONFIGURASI
-// ==================================================
-
 const endpoint = (process.env.BIZNET_ENDPOINT || "").replace(/\/+$/, "");
 const bucket = process.env.BIZNET_BUCKET || "";
+const region = process.env.BIZNET_REGION || "idn";
 
-const hasStorageCredentials =
-  Boolean(process.env.BIZNET_ACCESS_KEY) &&
-  Boolean(process.env.BIZNET_SECRET_KEY);
+const accessKeyId = process.env.BIZNET_ACCESS_KEY;
+const secretAccessKey = process.env.BIZNET_SECRET_KEY;
 
-const storageConfigured =
-  Boolean(endpoint) && Boolean(bucket) && hasStorageCredentials;
+const storageConfigured = Boolean(
+    endpoint && bucket && accessKeyId && secretAccessKey
+);
 
-if (endpoint) {
-  try {
-    const parsedEndpoint = new URL(endpoint);
+// Lokasi penyimpanan metadata di Object Storage
+const DATA_OBJECT_KEY = "data/inspopic.json";
 
-    if (
-      parsedEndpoint.protocol !== "https:" &&
-      parsedEndpoint.protocol !== "http:"
-    ) {
-      throw new Error("Endpoint harus menggunakan HTTP atau HTTPS.");
-    }
-  } catch {
-    throw new Error("BIZNET_ENDPOINT bukan URL yang valid.");
-  }
-}
-
-console.log("=== KONFIGURASI OBJECT STORAGE ===");
-console.log("Endpoint:", endpoint);
-console.log("Region:", process.env.BIZNET_REGION);
-console.log("Bucket:", bucket);
-console.log("Credentials tersedia:", hasStorageCredentials);
-console.log("=================================");
+// File lokal hanya digunakan sebagai data awal/migrasi
+const LOCAL_SEED_PATH = path.join(
+    __dirname,
+    "data",
+    "inspopic.json"
+);
 
 // ==================================================
 // 2. MIDDLEWARE
@@ -62,188 +52,416 @@ app.use(express.json({ limit: "1mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 // ==================================================
-// 3. KONEKSI MYSQL
+// 3. KONEKSI BIZNET NEO OBJECT STORAGE
 // ==================================================
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || "localhost",
-  port: Number(process.env.DB_PORT) || 3306,
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "inspopic",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
-
-/* ==================================================
-   4. KONEKSI BIZNET OBJECT STORAGE
-   ================================================== */
-
-const region = process.env.BIZNET_REGION || "idn";
 
 const s3 = storageConfigured
-  ? new S3Client({
-      endpoint,
-      region,
-      forcePathStyle: true,
-      credentials: {
-        accessKeyId: process.env.BIZNET_ACCESS_KEY,
-        secretAccessKey: process.env.BIZNET_SECRET_KEY,
-      },
+    ? new S3Client({
+        endpoint,
+        region,
+        forcePathStyle: true,
+        credentials: {
+            accessKeyId,
+            secretAccessKey,
+        },
     })
-  : null;
+    : null;
 
 // ==================================================
-// 5. KONFIGURASI UPLOAD
+// 4. KONFIGURASI UPLOAD GAMBAR
 // ==================================================
 
 const allowedTypes = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/gif": "gif",
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
 };
 
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-  fileFilter(req, file, callback) {
-    if (!allowedTypes[file.mimetype]) {
-      return callback(
-        new Error("Format yang diizinkan: JPG, PNG, WEBP, atau GIF.")
-      );
-    }
+    storage: multer.memoryStorage(),
 
-    callback(null, true);
-  },
+    limits: {
+        fileSize: 5 * 1024 * 1024,
+    },
+
+    fileFilter(req, file, callback) {
+        if (!allowedTypes[file.mimetype]) {
+            return callback(
+                new Error(
+                    "Format yang diizinkan: JPG, PNG, WEBP, atau GIF."
+                )
+            );
+        }
+
+        callback(null, true);
+    },
 });
 
 // ==================================================
-// 9. GALERI PUBLIK
+// 5. STRUKTUR DATA JSON
+// ==================================================
+
+function createEmptyData() {
+    return {
+        schema_version: 1,
+        images: [],
+        saved_images: [],
+        next_ids: {
+            images: 1,
+            saved_images: 1,
+        },
+    };
+}
+
+// Menyesuaikan struktur data agar konsisten
+function normalizeData(data = {}) {
+    const images = Array.isArray(data.images)
+        ? data.images
+        : [];
+
+    const savedImages = Array.isArray(data.saved_images)
+        ? data.saved_images
+        : [];
+
+    const highestImageId = images.reduce(
+        (max, item) => Math.max(max, Number(item.id) || 0),
+        0
+    );
+
+    const highestSavedId = savedImages.reduce(
+        (max, item) => Math.max(max, Number(item.id) || 0),
+        0
+    );
+
+    return {
+        schema_version: 1,
+
+        images,
+        saved_images: savedImages,
+
+        next_ids: {
+            images: Math.max(
+                Number(data.next_ids?.images) || 1,
+                highestImageId + 1
+            ),
+
+            saved_images: Math.max(
+                Number(data.next_ids?.saved_images) || 1,
+                highestSavedId + 1
+            ),
+        },
+    };
+}
+
+// ==================================================
+// 6. MEMBACA OBJECT STORAGE
+// ==================================================
+
+async function streamToString(stream) {
+    const chunks = [];
+
+    for await (const chunk of stream) {
+        chunks.push(
+            Buffer.isBuffer(chunk)
+                ? chunk
+                : Buffer.from(chunk)
+        );
+    }
+
+    return Buffer.concat(chunks).toString("utf8");
+}
+
+function isObjectNotFound(error) {
+    return (
+        error.name === "NoSuchKey" ||
+        error.name === "NotFound" ||
+        error.$metadata?.httpStatusCode === 404
+    );
+}
+
+async function readLocalSeed() {
+    try {
+        const content = await fs.readFile(
+            LOCAL_SEED_PATH,
+            "utf8"
+        );
+
+        return normalizeData(JSON.parse(content));
+    } catch (error) {
+        if (error.code === "ENOENT") {
+            return createEmptyData();
+        }
+
+        throw error;
+    }
+}
+
+// Membaca metadata dari Biznet
+async function readData() {
+    if (!s3) {
+        throw new Error(
+            "Biznet Object Storage belum dikonfigurasi."
+        );
+    }
+
+    try {
+        const result = await s3.send(
+            new GetObjectCommand({
+                Bucket: bucket,
+                Key: DATA_OBJECT_KEY,
+            })
+        );
+
+        const content = await streamToString(result.Body);
+
+        return normalizeData(JSON.parse(content));
+
+    } catch (error) {
+        if (!isObjectNotFound(error)) {
+            throw error;
+        }
+
+        console.log(
+            "Metadata belum ditemukan. Memeriksa file data awal..."
+        );
+
+        // Jika metadata belum ada, gunakan file migrasi lokal
+        const initialData = await readLocalSeed();
+
+        await writeData(initialData);
+
+        console.log(
+            "Metadata awal berhasil disimpan ke Object Storage."
+        );
+
+        return initialData;
+    }
+}
+
+// ==================================================
+// 7. MENYIMPAN METADATA KE OBJECT STORAGE
+// ==================================================
+
+async function writeData(data) {
+    if (!s3) {
+        throw new Error(
+            "Biznet Object Storage belum dikonfigurasi."
+        );
+    }
+
+    const normalizedData = normalizeData(data);
+
+    await s3.send(
+        new PutObjectCommand({
+            Bucket: bucket,
+            Key: DATA_OBJECT_KEY,
+
+            Body: JSON.stringify(
+                normalizedData,
+                null,
+                2
+            ),
+
+            ContentType: "application/json; charset=utf-8",
+        })
+    );
+
+    return normalizedData;
+}
+
+// ==================================================
+// 8. ANTRIAN OPERASI DATA
+// ==================================================
+
+// Mencegah dua proses tulis dalam satu server
+// saling menimpa metadata secara bersamaan.
+
+let dataQueue = Promise.resolve();
+
+function withDataLock(task) {
+    const operation = dataQueue.then(task, task);
+
+    dataQueue = operation.catch(() => {});
+
+    return operation;
+}
+
+// ==================================================
+// 9. UTILITAS URL GAMBAR
+// ==================================================
+
+function createImageUrl(objectKey) {
+    const encodedKey = objectKey
+        .split("/")
+        .map((part) => encodeURIComponent(part))
+        .join("/");
+
+    return `${endpoint}/${encodeURIComponent(bucket)}/${encodedKey}`;
+}
+
+// Memastikan URL hanya berasal dari bucket InspoPic
+function isValidImageUrl(value) {
+    try {
+        const parsed = new URL(value);
+        const expected = new URL(`${endpoint}/`);
+
+        return (
+            parsed.protocol === "https:" &&
+            parsed.origin === expected.origin &&
+            parsed.pathname.startsWith(
+                `/${encodeURIComponent(bucket)}/uploads/`
+            )
+        );
+    } catch {
+        return false;
+    }
+}
+
+// ==================================================
+// 10. GALERI PUBLIK
 // ==================================================
 
 app.get("/api/images", async (req, res, next) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT
-         id,
-         title,
-         image_url,
-         created_at
-       FROM images
-       ORDER BY created_at DESC`
-    );
+    try {
+        const data = await withDataLock(readData);
 
-    res.json(rows);
-  } catch (error) {
-    next(error);
-  }
+        const images = [...data.images].sort(
+            (a, b) =>
+                new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        return res.json({
+            images,
+        });
+
+    } catch (error) {
+        next(error);
+    }
 });
 
 // ==================================================
-// 11. UPLOAD GAMBAR KE BIZNET OBJECT STORAGE
+// 11. UPLOAD GAMBAR KE OBJECT STORAGE
 // ==================================================
 
-app.post("/upload", upload.single("image"), async (req, res, next) => {
-  let objectKey;
-  let uploadedToStorage = false;
+app.post(
+    "/upload",
+    upload.single("image"),
+    async (req, res, next) => {
+        let objectKey;
+        let uploadedToStorage = false;
 
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        message: "Pilih gambar terlebih dahulu.",
-      });
+        try {
+            if (!req.file) {
+                return res.status(400).json({
+                    message: "Pilih gambar terlebih dahulu.",
+                });
+            }
+
+            const title = String(
+                req.body?.title || ""
+            ).trim();
+
+            if (!title || title.length > 150) {
+                return res.status(400).json({
+                    message:
+                        "Judul wajib diisi dan maksimal 150 karakter.",
+                });
+            }
+
+            if (!storageConfigured || !s3) {
+                return res.status(503).json({
+                    message:
+                        "Konfigurasi Biznet belum lengkap. Periksa file .env.",
+                });
+            }
+
+            const extension = allowedTypes[req.file.mimetype];
+
+            objectKey = `uploads/${crypto.randomUUID()}.${extension}`;
+
+            // Upload file gambar
+            await s3.send(
+                new PutObjectCommand({
+                    Bucket: bucket,
+                    Key: objectKey,
+                    Body: req.file.buffer,
+                    ContentType: req.file.mimetype,
+                })
+            );
+
+            uploadedToStorage = true;
+
+            const imageUrl = createImageUrl(objectKey);
+
+            // Simpan metadata gambar ke JSON Object Storage
+            const image = await withDataLock(async () => {
+                const data = await readData();
+
+                const newImage = {
+                    id: data.next_ids.images++,
+                    title,
+                    image_url: imageUrl,
+                    object_key: objectKey,
+                    created_at: new Date().toISOString(),
+                };
+
+                data.images.push(newImage);
+
+                await writeData(data);
+
+                return newImage;
+            });
+
+            return res.status(201).json({
+                message: "Gambar berhasil diunggah.",
+                image,
+            });
+
+        } catch (error) {
+            // Jika metadata gagal disimpan, hapus file
+            // yang sudah telanjur diunggah.
+            if (uploadedToStorage && objectKey && s3) {
+                try {
+                    await s3.send(
+                        new DeleteObjectCommand({
+                            Bucket: bucket,
+                            Key: objectKey,
+                        })
+                    );
+                } catch (deleteError) {
+                    console.error(
+                        "Gagal membersihkan file:",
+                        deleteError.message
+                    );
+                }
+            }
+
+            next(error);
+        }
     }
-
-    const title = String(req.body?.title || "").trim();
-
-    if (!title || title.length > 150) {
-      return res.status(400).json({
-        message: "Judul wajib diisi dan maksimal 150 karakter.",
-      });
-    }
-
-    if (!storageConfigured || !s3) {
-      return res.status(503).json({
-        message: "Konfigurasi Biznet belum lengkap. Periksa file .env.",
-      });
-    }
-
-    const extension = allowedTypes[req.file.mimetype];
-    objectKey = `uploads/${crypto.randomUUID()}.${extension}`;
-
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: objectKey,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype,
-        ACL: "public-read",
-      })
-    );
-
-    uploadedToStorage = true;
-
-    const encodedKey = objectKey
-      .split("/")
-      .map((part) => encodeURIComponent(part))
-      .join("/");
-
-    const imageUrl = `${endpoint}/${encodeURIComponent(bucket)}/${encodedKey}`;
-
-    const [result] = await pool.execute(
-      `INSERT INTO images (title, image_url, object_key)
-       VALUES (?, ?, ?)`,
-      [title, imageUrl, objectKey]
-    );
-
-    return res.status(201).json({
-      message: "Gambar berhasil diunggah.",
-      image: {
-        id: result.insertId,
-        title,
-        image_url: imageUrl,
-      },
-    });
-  } catch (error) {
-    if (uploadedToStorage && objectKey && s3) {
-      try {
-        await s3.send(
-          new DeleteObjectCommand({
-            Bucket: bucket,
-            Key: objectKey,
-          })
-        );
-      } catch (deleteError) {
-        console.error(
-          "Gagal menghapus objek setelah upload gagal:",
-          deleteError.message
-        );
-      }
-    }
-    next(error);
-  }
-});
+);
 
 // ==================================================
 // 12. DAFTAR GAMBAR TERSIMPAN
 // ==================================================
 
 app.get("/api/saved", async (req, res, next) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT id, image_url, title, created_at
-       FROM saved_images
-       ORDER BY created_at DESC`
-    );
+    try {
+        const data = await withDataLock(readData);
 
-    res.json(rows);
-  } catch (error) {
-    next(error);
-  }
+        const savedImages = [...data.saved_images].sort(
+            (a, b) =>
+                new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        // Mempertahankan format array agar kompatibel
+        // dengan frontend lama.
+        return res.json(savedImages);
+
+    } catch (error) {
+        next(error);
+    }
 });
 
 // ==================================================
@@ -251,316 +469,379 @@ app.get("/api/saved", async (req, res, next) => {
 // ==================================================
 
 app.post("/api/saved", async (req, res, next) => {
-  try {
-    const imageUrl = String(req.body?.image_url || "").trim();
-    const title = String(req.body?.title || "Gambar tersimpan").trim();
-
-    let parsedUrl;
-
     try {
-      parsedUrl = new URL(imageUrl);
-    } catch {
-      return res.status(400).json({
-        message: "URL gambar tidak valid.",
-      });
+        const imageUrl = String(
+            req.body?.image_url || ""
+        ).trim();
+
+        const title = String(
+            req.body?.title || "Gambar tersimpan"
+        ).trim();
+
+        if (
+            !imageUrl ||
+            imageUrl.length > 2048 ||
+            !title ||
+            title.length > 150 ||
+            !isValidImageUrl(imageUrl)
+        ) {
+            return res.status(400).json({
+                message: "URL atau judul gambar tidak valid.",
+            });
+        }
+
+        const urlHash = crypto
+            .createHash("sha256")
+            .update(imageUrl)
+            .digest("hex");
+
+        await withDataLock(async () => {
+            const data = await readData();
+
+            const existing = data.saved_images.find(
+                (item) => item.url_hash === urlHash
+            );
+
+            if (existing) {
+                existing.title = title;
+            } else {
+                data.saved_images.push({
+                    id: data.next_ids.saved_images++,
+                    image_url: imageUrl,
+                    title,
+                    url_hash: urlHash,
+                    created_at: new Date().toISOString(),
+                });
+            }
+
+            await writeData(data);
+        });
+
+        return res.status(201).json({
+            message: "Gambar berhasil disimpan.",
+        });
+
+    } catch (error) {
+        next(error);
     }
-
-    if (
-      !["http:", "https:"].includes(parsedUrl.protocol) ||
-      imageUrl.length > 2048 ||
-      !title ||
-      title.length > 150
-    ) {
-      return res.status(400).json({
-        message: "URL atau judul tidak valid.",
-      });
-    }
-
-    const urlHash = crypto
-      .createHash("sha256")
-      .update(imageUrl)
-      .digest("hex");
-
-    const [existing] = await pool.execute(
-      `SELECT id FROM saved_images WHERE url_hash = ? LIMIT 1`,
-      [urlHash]
-    );
-
-    if (existing.length > 0) {
-      await pool.execute(
-        `UPDATE saved_images SET title = ? WHERE id = ?`,
-        [title, existing[0].id]
-      );
-    } else {
-      await pool.execute(
-        `INSERT INTO saved_images (image_url, title, url_hash)
-         VALUES (?, ?, ?)`,
-        [imageUrl, title, urlHash]
-      );
-    }
-
-    return res.status(201).json({
-      message: "Gambar berhasil disimpan.",
-    });
-  } catch (error) {
-    next(error);
-  }
 });
 
 // ==================================================
-// 13.5 ENDPOINT PROXY DOWNLOAD GAMBAR (BARU)
+// 14. DOWNLOAD GAMBAR
 // ==================================================
 
 app.get("/api/download", async (req, res) => {
-  try {
-    const imageUrl = req.query.url;
-    const filename = req.query.name || "gambar-inspopic";
+    try {
+        const imageUrl = String(req.query.url || "");
+        const filename = String(
+            req.query.name || "gambar-inspopic"
+        );
 
-    if (!imageUrl) {
-      return res.status(400).send("URL gambar diperlukan.");
+        if (!isValidImageUrl(imageUrl)) {
+            return res.status(400).send(
+                "URL gambar tidak valid."
+            );
+        }
+
+        const response = await fetch(imageUrl, {
+            signal: AbortSignal.timeout(15000),
+        });
+
+        if (!response.ok) {
+            return res.status(404).send(
+                "Gambar tidak ditemukan."
+            );
+        }
+
+        const contentType =
+            response.headers.get("content-type") || "";
+
+        const extensionMap = {
+            "image/jpeg": "jpg",
+            "image/png": "png",
+            "image/webp": "webp",
+            "image/gif": "gif",
+        };
+
+        const extension = extensionMap[
+            contentType.split(";")[0].trim()
+        ];
+
+        if (!extension) {
+            return res.status(415).send(
+                "Format gambar tidak didukung."
+            );
+        }
+
+        const safeFilename = filename
+            .replace(/[^\w\s-]/g, "_")
+            .trim()
+            .slice(0, 100) || "gambar-inspopic";
+
+        const buffer = Buffer.from(
+            await response.arrayBuffer()
+        );
+
+        res.setHeader("Content-Type", contentType);
+
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${safeFilename}.${extension}"`
+        );
+
+        return res.send(buffer);
+
+    } catch (error) {
+        console.error(
+            "Gagal mengunduh gambar:",
+            error.message
+        );
+
+        return res.status(500).send(
+            "Terjadi kesalahan saat mengunduh gambar."
+        );
     }
-
-    const response = await fetch(imageUrl);
-
-    if (!response.ok) {
-      return res.status(404).send("Gambar tidak ditemukan.");
-    }
-
-    const contentType = response.headers.get("content-type") || "image/jpeg";
-    const ext = contentType.includes("png")
-      ? "png"
-      : contentType.includes("webp")
-      ? "webp"
-      : contentType.includes("gif")
-      ? "gif"
-      : "jpg";
-
-    const safeFilename = filename.replace(/[^\w\s-]/gi, "_").trim();
-
-    res.setHeader("Content-Type", contentType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${safeFilename}.${ext}"`
-    );
-
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    return res.send(buffer);
-  } catch (error) {
-    console.error("Gagal mendownload via proxy:", error);
-    res.status(500).send("Terjadi kesalahan saat mengunduh gambar.");
-  }
 });
 
 // ==================================================
-// 14. HAPUS GAMBAR DARI DAFTAR TERSIMPAN
+// 15. HAPUS GAMBAR DARI DAFTAR TERSIMPAN
 // ==================================================
 
 app.delete("/api/saved/:id", async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
+    try {
+        const id = Number(req.params.id);
 
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      return res.status(400).json({
-        message: "ID gambar tidak valid.",
-      });
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "ID gambar tidak valid.",
+            });
+        }
+
+        const deleted = await withDataLock(async () => {
+            const data = await readData();
+
+            const index = data.saved_images.findIndex(
+                (item) => Number(item.id) === id
+            );
+
+            if (index === -1) {
+                return false;
+            }
+
+            data.saved_images.splice(index, 1);
+
+            await writeData(data);
+
+            return true;
+        });
+
+        if (!deleted) {
+            return res.status(404).json({
+                message: "Gambar tersimpan tidak ditemukan.",
+            });
+        }
+
+        return res.json({
+            message: "Gambar dihapus dari daftar tersimpan.",
+        });
+
+    } catch (error) {
+        next(error);
     }
-
-    const [result] = await pool.execute(
-      `DELETE FROM saved_images WHERE id = ?`,
-      [id]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
-        message: "Gambar tersimpan tidak ditemukan.",
-      });
-    }
-
-    return res.json({
-      message: "Gambar dihapus dari daftar tersimpan.",
-    });
-  } catch (error) {
-    next(error);
-  }
 });
 
 // ==================================================
-// 15. HALAMAN UTAMA
-// ==================================================
-
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ==================================================
-// 15.5 FIX KEAMANAN BUCKET BIZNET
-// ==================================================
-
-app.get("/buka-kunci", async (req, res) => {
-  try {
-    const policy = {
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Sid: "PublicReadGetObject",
-          Effect: "Allow",
-          Principal: "*",
-          Action: "s3:GetObject",
-          Resource: `arn:aws:s3:::${bucket}/*`,
-        },
-      ],
-    };
-
-    const command = new PutBucketPolicyCommand({
-      Bucket: bucket,
-      Policy: JSON.stringify(policy),
-    });
-
-    await s3.send(command);
-    res.send(
-      "<h1>SUKSES!</h1><p>Gudang Biznet sekarang sudah terbuka untuk publik. Silakan coba upload gambar lagi di InspoPic.</p>"
-    );
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("GAGAL MEMBUKA KUNCI: " + error.message);
-  }
-});
-
-// ==================================================
-// 16. PENANGANAN ERROR
-// ==================================================
-
-app.use((err, req, res, next) => {
-  if (res.headersSent) {
-    return next(err);
-  }
-
-  if (err instanceof multer.MulterError) {
-    return res.status(400).json({
-      message:
-        err.code === "LIMIT_FILE_SIZE"
-          ? "Ukuran gambar maksimal 5 MB."
-          : err.message,
-    });
-  }
-
-  if (err.message && err.message.startsWith("Format yang diizinkan:")) {
-    return res.status(400).json({
-      message: err.message,
-    });
-  }
-
-  console.error("Kesalahan server:", err);
-
-  return res.status(500).json({
-    message: "Terjadi kesalahan pada server.",
-  });
-});
-
-// ==================================================
-// 17. MENJALANKAN SERVER
-// ==================================================
-
-async function startServer() {
-  const connection = await pool.getConnection();
-  connection.release();
-
-  app.listen(PORT, () => {
-    console.log(`InspoPic berjalan di http://localhost:${PORT}`);
-
-    if (!storageConfigured) {
-      console.warn(
-        "Biznet belum dikonfigurasi lengkap. Fitur upload belum tersedia."
-      );
-    }
-  });
-}
-
-startServer().catch((error) => {
-  console.error(
-    "Gagal memulai server. Periksa konfigurasi MySQL:",
-    error.message
-  );
-  process.exit(1);
-});
-
-// ==================================================
-// 11.5 HAPUS GAMBAR UTAMA (UNGGAHAN)
+// 16. HAPUS GAMBAR UTAMA
 // ==================================================
 
 app.delete("/api/images/:id", async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
+    try {
+        const id = Number(req.params.id);
 
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      return res.status(400).json({ message: "ID gambar tidak valid." });
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "ID gambar tidak valid.",
+            });
+        }
+
+        const deletedImage = await withDataLock(async () => {
+            const data = await readData();
+
+            const index = data.images.findIndex(
+                (item) => Number(item.id) === id
+            );
+
+            if (index === -1) {
+                return null;
+            }
+
+            const image = data.images[index];
+
+            // Hapus metadata dari JSON
+            data.images.splice(index, 1);
+
+            // Hapus juga koleksi tersimpan yang merujuk gambar ini
+            data.saved_images = data.saved_images.filter(
+                (item) => item.image_url !== image.image_url
+            );
+
+            await writeData(data);
+
+            return image;
+        });
+
+        if (!deletedImage) {
+            return res.status(404).json({
+                message: "Gambar tidak ditemukan.",
+            });
+        }
+
+        // Hapus file fisik setelah metadata diperbarui
+        if (deletedImage.object_key) {
+            try {
+                await s3.send(
+                    new DeleteObjectCommand({
+                        Bucket: bucket,
+                        Key: deletedImage.object_key,
+                    })
+                );
+            } catch (error) {
+                console.error(
+                    "Metadata terhapus, tetapi file gagal dihapus:",
+                    error.message
+                );
+            }
+        }
+
+        return res.json({
+            message: "Unggahan berhasil dihapus.",
+        });
+
+    } catch (error) {
+        next(error);
     }
-
-    // Ambil object_key gambar dari database
-    const [rows] = await pool.execute(
-      `SELECT object_key FROM images WHERE id = ? LIMIT 1`,
-      [id]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ message: "Gambar tidak ditemukan." });
-    }
-
-    const objectKey = rows[0].object_key;
-
-    // Hapus data dari database MySQL
-    await pool.execute(`DELETE FROM images WHERE id = ?`, [id]);
-
-    // Hapus file dari Biznet Object Storage jika S3 aktif
-    if (s3 && objectKey) {
-      try {
-        await s3.send(
-          new DeleteObjectCommand({
-            Bucket: bucket,
-            Key: objectKey,
-          })
-        );
-      } catch (s3Error) {
-        console.error("Gagal menghapus file dari Biznet Storage:", s3Error.message);
-      }
-    }
-
-    return res.json({ message: "Unggahan berhasil dihapus." });
-  } catch (error) {
-    next(error);
-  }
 });
 
 // ==================================================
-// 11.6 EDIT JUDUL GAMBAR (UPDATE)
+// 17. EDIT JUDUL GAMBAR
 // ==================================================
 
 app.put("/api/images/:id", async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const title = String(req.body?.title || "").trim();
+    try {
+        const id = Number(req.params.id);
 
-    if (!Number.isSafeInteger(id) || id <= 0) {
-      return res.status(400).json({ message: "ID gambar tidak valid." });
+        const title = String(
+            req.body?.title || ""
+        ).trim();
+
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return res.status(400).json({
+                message: "ID gambar tidak valid.",
+            });
+        }
+
+        if (!title || title.length > 150) {
+            return res.status(400).json({
+                message:
+                    "Judul wajib diisi dan maksimal 150 karakter.",
+            });
+        }
+
+        const updated = await withDataLock(async () => {
+            const data = await readData();
+
+            const image = data.images.find(
+                (item) => Number(item.id) === id
+            );
+
+            if (!image) {
+                return false;
+            }
+
+            image.title = title;
+
+            await writeData(data);
+
+            return true;
+        });
+
+        if (!updated) {
+            return res.status(404).json({
+                message: "Gambar tidak ditemukan.",
+            });
+        }
+
+        return res.json({
+            message: "Judul gambar berhasil diperbarui.",
+            title,
+        });
+
+    } catch (error) {
+        next(error);
     }
+});
 
-    if (!title || title.length > 150) {
-      return res.status(400).json({ message: "Judul wajib diisi dan maksimal 150 karakter." });
-    }
+// ==================================================
+// 18. HALAMAN UTAMA
+// ==================================================
 
-    const [result] = await pool.execute(
-      `UPDATE images SET title = ? WHERE id = ?`,
-      [title, id]
+app.get("/", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "public", "index.html")
     );
+});
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ message: "Gambar tidak ditemukan." });
+// ==================================================
+// 19. PENANGANAN ERROR
+// ==================================================
+
+app.use((err, req, res, next) => {
+    if (res.headersSent) {
+        return next(err);
     }
 
-    return res.json({ message: "Judul gambar berhasil diperbarui.", title });
-  } catch (error) {
-    next(error);
-  }
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({
+            message:
+                err.code === "LIMIT_FILE_SIZE"
+                    ? "Ukuran gambar maksimal 5 MB."
+                    : err.message,
+        });
+    }
+
+    if (
+        err.message &&
+        err.message.startsWith("Format yang diizinkan:")
+    ) {
+        return res.status(400).json({
+            message: err.message,
+        });
+    }
+
+    console.error("Kesalahan server:", err);
+
+    return res.status(500).json({
+        message: "Terjadi kesalahan pada server.",
+    });
+});
+
+// ==================================================
+// 20. MENJALANKAN SERVER
+// ==================================================
+
+app.listen(PORT, () => {
+    console.log("------------------------------------");
+    console.log("InspoPic berjalan!");
+    console.log(`http://localhost:${PORT}`);
+    console.log("------------------------------------");
+
+    if (storageConfigured) {
+        console.log("Biznet Object Storage: TERKONFIGURASI");
+        console.log("Metadata: data/inspopic.json");
+        console.log("Gambar: uploads/");
+    } else {
+        console.warn(
+            "Biznet belum dikonfigurasi. Periksa file .env."
+        );
+    }
 });

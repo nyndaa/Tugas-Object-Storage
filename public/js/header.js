@@ -1,10 +1,20 @@
 
+/**
+ * ==========================================
+ * INSPOPIC - HEADER SCRIPT
+ * Memuat komponen header dan informasi profil.
+ * ==========================================
+ */
+
 document.addEventListener("DOMContentLoaded", () => {
-    // Memuat header.html ke halaman
+
+    /**
+     * Memuat header.html ke dalam halaman.
+     */
     async function loadHeader() {
         const headerContainer = document.getElementById("header-container");
 
-        // Jika halaman tidak memiliki tempat untuk header, hentikan
+        // Hentikan jika halaman tidak memiliki header.
         if (!headerContainer) return;
 
         try {
@@ -16,14 +26,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
             headerContainer.innerHTML = await response.text();
 
-            // Tampilkan nama dan inisial profil
+            // Tampilkan informasi profil setelah header dimuat.
             renderHeaderProfile();
+
         } catch (error) {
             console.error("Gagal memuat header:", error);
         }
     }
 
-    // Mengambil data profil dari localStorage
+    /**
+     * Mengambil dan menampilkan nama profil.
+     * Data profil disimpan sementara di localStorage.
+     */
     function renderHeaderProfile() {
         const headerName = document.getElementById("headerProfileName");
         const headerAvatar = document.getElementById("headerAvatarInitial");
@@ -36,32 +50,47 @@ document.addEventListener("DOMContentLoaded", () => {
             if (savedProfile) {
                 const profile = JSON.parse(savedProfile);
 
-                if (profile && typeof profile.name === "string" && profile.name.trim()) {
+                if (
+                    profile &&
+                    typeof profile.name === "string" &&
+                    profile.name.trim()
+                ) {
                     profileName = profile.name.trim();
                 }
             }
+
         } catch (error) {
             console.warn("Data profil tidak dapat dibaca.", error);
         }
 
+        // Perbarui nama profil.
         if (headerName) {
             headerName.textContent = profileName;
         }
 
+        // Perbarui inisial avatar.
         if (headerAvatar) {
-            headerAvatar.textContent = profileName.charAt(0).toUpperCase() || "U";
+            headerAvatar.textContent =
+                profileName.charAt(0).toUpperCase() || "U";
         }
     }
 
-    // Memperbarui header ketika profil diubah
+    /**
+     * Memperbarui header ketika profil berubah.
+     */
     window.addEventListener("inspopicProfileUpdated", renderHeaderProfile);
 
-    // Memperbarui header jika localStorage berubah dari tab lain
+    /**
+     * Memperbarui header jika localStorage berubah
+     * dari tab browser lainnya.
+     */
     window.addEventListener("storage", (event) => {
         if (event.key === "inspopicProfile") {
             renderHeaderProfile();
         }
     });
 
+    // Jalankan pemuatan header.
     loadHeader();
+
 });
